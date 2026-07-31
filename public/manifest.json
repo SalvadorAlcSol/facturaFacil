@@ -1,0 +1,23 @@
+{
+  "short_name": "Facturamatic",
+  "name": "Facturamatic - Automatizador de Facturas",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0f0f15",
+  "display": "standalone",
+  "orientation": "portrait"
+}

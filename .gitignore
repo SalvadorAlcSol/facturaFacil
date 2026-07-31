@@ -1,0 +1,14 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Credentials and sensitive JSON files
+google-credentials.json
+facturador-automatico-*.json
+tickets.json
+profile.json

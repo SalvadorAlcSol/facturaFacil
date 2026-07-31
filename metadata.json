@@ -1,0 +1,6 @@
+{
+  "name": "Facturación de Gasolina",
+  "description": "Identifica datos clave de tus tickets de gasolina (folio, estación, web ID, monto) mediante IA y asiste en su facturación.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
