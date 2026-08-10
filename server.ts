@@ -1,3 +1,4 @@
+import "./src/env-loader";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
@@ -9,7 +10,6 @@ import { parseOCRText } from "./src/ocr-parser";
 import { autoInvoiceReal, syncInvoicesReal } from "./src/rpa-automator";
 import { getDriveStatus, uploadTicketImage, uploadInvoiceFiles } from "./src/google-drive";
 
-dotenv.config();
 
 async function startServer() {
   const app = express();
