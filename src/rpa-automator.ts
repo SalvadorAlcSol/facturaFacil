@@ -110,6 +110,19 @@ export const ESTACIONES_MAP: Record<string, string> = {
   "P25034": "https://grupoferche.com:25034/misantla/"
 };
 
+export function normalizeStationCode(estacion: string): string {
+  const clean = (estacion || "").toUpperCase().trim();
+  const match = clean.match(/\b(E\d+|P\d+|\d{4,6})\b/i);
+  if (match) {
+    const raw = match[1];
+    return /^[EP]/i.test(raw) ? raw : `E${raw}`;
+  }
+  // Fallback
+  const alphaNumeric = clean.replace(/[^A-Z0-9]/ig, "");
+  if (!alphaNumeric) return "";
+  return alphaNumeric.startsWith("E") || alphaNumeric.startsWith("P") ? alphaNumeric : `E${alphaNumeric}`;
+}
+
 export async function autoInvoiceReal(
   ticket: {
     folio: string;
@@ -127,9 +140,8 @@ export async function autoInvoiceReal(
     codigoCliente?: string;
   }
 ): Promise<AutomationResult> {
-  // Normalize station code (e.g. E12620 or 12620 -> E12620)
-  const stationCode = ticket.estacion.toUpperCase().trim();
-  const normalizedCode = stationCode.startsWith("E") ? stationCode : `E${stationCode}`;
+  // Normalize station code (handles descriptive names like "E04518 - Ruiz Cortines")
+  const normalizedCode = normalizeStationCode(ticket.estacion);
   
   // Get portal URL from our map, fallback to env variable, fallback to default
   const portalUrl = ESTACIONES_MAP[normalizedCode] || process.env.FERCHEGAS_PORTAL_URL || "https://www.ferchegas.com.mx/facturacion/";
@@ -217,7 +229,7 @@ export async function autoInvoiceReal(
 
     // Dynamic Station Link Selection (for Ferchegas portal list)
     if (portalUrl.includes("ferchegas.com.mx/facturacion") || portalUrl.includes("ferchegas.com/facturacion")) {
-      const cleanStation = ticket.estacion.replace(/^E/i, ""); // e.g. "12620"
+      const cleanStation = normalizedCode.replace(/^[EP]/i, ""); // e.g. "12620"
       writeLog(`Portal detectado como listado general. Buscando enlace para estación: "${cleanStation}"`);
       
       const targetLink = await page.evaluate((num) => {
@@ -316,13 +328,13 @@ export async function autoInvoiceReal(
 
       // If there is an Estacion input, type/select it
       if (estacionSelector) {
-        const cleanEstacion = ticket.estacion.replace(/^E/i, "");
+        const cleanEstacion = normalizedCode.replace(/^[EP]/i, "");
         writeLog(`Escribiendo/Seleccionando Estación "${cleanEstacion}" en selector "${estacionSelector}"...`);
         
         const tagName = await page.evaluate((sel) => document.querySelector(sel)?.tagName, estacionSelector);
         if (tagName === "SELECT") {
           await page.select(estacionSelector, cleanEstacion).catch(async () => {
-            await page.select(estacionSelector, ticket.estacion).catch(() => {});
+            await page.select(estacionSelector, normalizedCode).catch(() => {});
           });
         } else {
           await page.focus(estacionSelector);
@@ -1202,11 +1214,7 @@ export async function syncInvoicesReal(
 
   // Get unique normalized stations from tickets
   const uniqueStations = Array.from(
-    new Set(tickets.map((t: any) => {
-      const stationStr = (t.estacion || "").toUpperCase().trim();
-      const match = stationStr.match(/\b(E\d+|P\d+)\b/i);
-      return match ? match[1].toUpperCase() : stationStr;
-    }))
+    new Set(tickets.map((t: any) => normalizeStationCode(t.estacion)))
   ).filter(st => st !== "");
 
   let processedCount = 0;
@@ -1238,9 +1246,8 @@ export async function syncInvoicesReal(
 
   try {
     for (const station of uniqueStations) {
-      // Normalize station name (e.g. E12620 - Arenales or E12620)
-      const stationMatch = station.match(/\b(E\d+|P\d+)\b/i);
-      const normalizedCode = stationMatch ? stationMatch[1].toUpperCase() : station;
+      // Normalize station name
+      const normalizedCode = normalizeStationCode(station);
       const portalUrl = ESTACIONES_MAP[normalizedCode];
 
       if (!portalUrl) {
@@ -1410,8 +1417,8 @@ export async function syncInvoicesReal(
 
           // Find match in tickets
           const matchingTicket = tickets.find((t: any) => {
-            const tStation = t.estacion.toUpperCase().trim();
-            const stationCodeMatches = tStation.includes(normalizedCode);
+            const tStationNormalized = normalizeStationCode(t.estacion);
+            const stationCodeMatches = tStationNormalized === normalizedCode;
             const amountMatches = Math.abs(t.monto - invoice.monto) < 1.5;
             
             // Check if dates match or if the invoice was generated within 30 days after the ticket purchase date
