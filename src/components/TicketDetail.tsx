@@ -329,15 +329,16 @@ export default function TicketDetail({
     try {
       const zip = new JSZip();
       
-      // 1. Generate XML
-      const xmlContent = autoInvoiceResult?.xml ? autoInvoiceResult.xml : generateDynamicXML();
+      // 1. Generate XML (prioritize real XML from current execution or database, fallback to simulated representation)
+      const xmlContent = autoInvoiceResult?.xml || editedTicket.xml || generateDynamicXML();
       const xmlFileName = `CFDI_${datosFacturacion.rfc || 'XAXX010101000'}_Factura_${editedTicket.folio || 'N_A'}.xml`;
       zip.file(xmlFileName, xmlContent);
       
-      // 2. Generate PDF
+      // 2. Generate PDF (prioritize real PDF base64 from current execution or database, fallback to simulated representation)
       let pdfBlob: Blob;
-      if (autoInvoiceResult && autoInvoiceResult.pdfBase64) {
-        const byteCharacters = atob(autoInvoiceResult.pdfBase64);
+      const pdfBase64 = autoInvoiceResult?.pdfBase64 || editedTicket.pdfBase64;
+      if (pdfBase64) {
+        const byteCharacters = atob(pdfBase64);
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
           byteNumbers[i] = byteCharacters.charCodeAt(i);

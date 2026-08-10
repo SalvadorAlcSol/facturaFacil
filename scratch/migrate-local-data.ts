@@ -41,6 +41,8 @@ const mapTicketToPostgres = (t: any) => ({
   drive_url: t.driveUrl ?? null,
   xml_drive_link: t.xmlDriveLink ?? null,
   pdf_drive_link: t.pdfDriveLink ?? null,
+  xml: t.xml ?? null,
+  pdf_base64: t.pdfBase64 ?? null,
 });
 
 const mapProfileToPostgres = (p: any) => ({

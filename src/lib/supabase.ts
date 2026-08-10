@@ -39,6 +39,8 @@ export const mapPostgresToTicket = (row: any): Ticket => ({
   driveUrl: row.drive_url,
   xmlDriveLink: row.xml_drive_link,
   pdfDriveLink: row.pdf_drive_link,
+  xml: row.xml,
+  pdfBase64: row.pdf_base64,
 });
 
 export const mapTicketToPostgres = (t: Ticket) => ({
@@ -63,6 +65,8 @@ export const mapTicketToPostgres = (t: Ticket) => ({
   drive_url: t.driveUrl ?? null,
   xml_drive_link: t.xmlDriveLink ?? null,
   pdf_drive_link: t.pdfDriveLink ?? null,
+  xml: t.xml ?? null,
+  pdf_base64: t.pdfBase64 ?? null,
 });
 
 export const mapPostgresToProfile = (row: any): DatosFacturacion => ({

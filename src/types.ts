@@ -20,6 +20,8 @@ export interface Ticket {
   driveUrl?: string; // Google Drive image backup link
   xmlDriveLink?: string; // Google Drive XML link
   pdfDriveLink?: string; // Google Drive PDF link
+  xml?: string; // Raw XML content
+  pdfBase64?: string; // Raw PDF base64 string
 }
 
 export interface DatosFacturacion {
