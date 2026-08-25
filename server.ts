@@ -152,8 +152,16 @@ Si la foto no es legible o no contiene estos campos, pon found = false.`;
     }
   });
 
+  let isRobotRunning = false;
+
   // Auto-Invoicing endpoint that calls the real Puppeteer automation
   app.post("/api/auto-invoice", async (req: express.Request, res: express.Response) => {
+    if (isRobotRunning) {
+      console.log("[API] Intento de facturación bloqueado: el robot ya está ejecutando otra tarea.");
+      return res.status(409).json({ error: "El robot de facturación ya está ejecutando otra tarea. Por favor espera a que termine tu petición anterior." });
+    }
+
+    isRobotRunning = true;
     try {
       const { ticket, datosFacturacion } = req.body;
       if (!ticket || !datosFacturacion) {
@@ -236,11 +244,19 @@ Si la foto no es legible o no contiene estos campos, pon found = false.`;
     } catch (error: any) {
       console.error("Error en auto-facturacion:", error);
       return res.status(500).json({ error: error.message || "Error al procesar el timbrado automático." });
+    } finally {
+      isRobotRunning = false;
     }
   });
 
   // Synchronize past invoices by querying the portal using customer details
   app.post("/api/sync-invoices", async (req: express.Request, res: express.Response) => {
+    if (isRobotRunning) {
+      console.log("[API] Intento de sincronización bloqueado: el robot ya está ejecutando otra tarea.");
+      return res.status(409).json({ error: "El robot de facturación ya está ejecutando otra tarea. Por favor espera a que termine y reintenta." });
+    }
+
+    isRobotRunning = true;
     try {
       const { datosFacturacion } = req.body;
       if (!datosFacturacion) {
@@ -253,6 +269,8 @@ Si la foto no es legible o no contiene estos campos, pon found = false.`;
     } catch (error: any) {
       console.error("Error en sync-invoices:", error);
       return res.status(500).json({ error: error.message || "Error al sincronizar facturas desde el portal." });
+    } finally {
+      isRobotRunning = false;
     }
   });
 
