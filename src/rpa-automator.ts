@@ -1370,6 +1370,7 @@ export async function syncInvoicesReal(
         await new Promise(r => setTimeout(r, 1500));
 
         // Extract invoices
+        // Extract invoices
         const invoices = await page.evaluate(() => {
           const list: any[] = [];
           const rows = Array.from(document.querySelectorAll("table tr"));
@@ -1377,22 +1378,40 @@ export async function syncInvoicesReal(
             const row = rows[i];
             const rowText = row.textContent || "";
             const interactives = row.querySelectorAll("a, input, button");
-            const hasDownload = Array.from(interactives).some(el => el.outerHTML.toLowerCase().includes("xml") || el.outerHTML.toLowerCase().includes("pdf"));
+            const hasDownload = Array.from(interactives).some(el => {
+              const html = el.outerHTML.toLowerCase();
+              return html.includes("xml") || html.includes("pdf") || html.includes("descargar");
+            });
             
             if (hasDownload) {
-              const folioMatch = rowText.match(/([A-Z]+-\d+)/);
+              const folioMatch = rowText.match(/([A-Z]+-\d+)/i) || rowText.match(/(\d{4,})/);
               const invoiceFolio = folioMatch ? folioMatch[1] : "";
               
               const nextRow = rows[i + 1];
               const nextRowText = nextRow ? nextRow.textContent || "" : "";
-              
-              const fechaMatch = nextRowText.match(/Fecha\/Hora:\s*([\d\/:\s\w\.\-]+)/i);
-              const montoMatch = nextRowText.match(/Monto:\s*\$?([\d,.]+)/i);
-              
+              const combinedText = (rowText + " " + nextRowText).replace(/\s+/g, " ");
+
+              // Extract date (DD/MM/YYYY or YYYY-MM-DD)
+              const fechaMatch = combinedText.match(/(\d{2}\/\d{2}\/\d{4})|(\d{4}-\d{2}-\d{2})/);
+              const fecha = fechaMatch ? fechaMatch[0] : "";
+
+              // Extract amounts (look for total/monto or any decimal number with 2 decimal places)
+              let monto = 0;
+              const totalMatch = combinedText.match(/(?:total|monto|importe):\s*\$?([\d,.]+)/i);
+              if (totalMatch) {
+                monto = parseFloat(totalMatch[1].replace(/,/g, ""));
+              } else {
+                const decimalMatches = combinedText.match(/\$?(\d{1,6}\.\d{2})/g);
+                if (decimalMatches && decimalMatches.length > 0) {
+                  const nums = decimalMatches.map(m => parseFloat(m.replace(/[^\d.]/g, "")));
+                  monto = Math.max(...nums);
+                }
+              }
+
               list.push({
                 invoiceFolio,
-                fecha: fechaMatch ? fechaMatch[1].trim() : "",
-                monto: montoMatch ? parseFloat(montoMatch[1].replace(/,/g, "")) : 0,
+                fecha,
+                monto,
                 rowIndex: i
               });
             }
@@ -1412,29 +1431,40 @@ export async function syncInvoicesReal(
             const parts = invoice.fecha.split(" ")[0].split("/");
             if (parts.length === 3) {
               invoiceDateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            } else if (invoice.fecha.includes("-")) {
+              invoiceDateStr = invoice.fecha.split(" ")[0];
             }
           }
 
           // Find match in tickets
           const matchingTicket = tickets.find((t: any) => {
+            // Do not rematch tickets that are already facturado
+            if (t.status === "facturado") return false;
+
             const tStationNormalized = normalizeStationCode(t.estacion);
             const stationCodeMatches = tStationNormalized === normalizedCode;
-            const amountMatches = Math.abs(t.monto - invoice.monto) < 1.5;
-            
-            // Check if dates match or if the invoice was generated within 30 days after the ticket purchase date
-            let datesMatch = false;
+            if (!stationCodeMatches) return false;
+
+            // If ticket has monto and invoice has monto, check amount match (within $2.00 MXN)
+            const amountMatches = (t.monto && invoice.monto > 0)
+              ? Math.abs(t.monto - invoice.monto) < 2.0
+              : true;
+
+            if (!amountMatches) return false;
+
+            // Date match check (optional / tolerant fallback)
             if (t.fecha && invoiceDateStr) {
               const tDate = new Date(t.fecha);
               const invDate = new Date(invoiceDateStr);
-              const diffTime = invDate.getTime() - tDate.getTime();
-              const diffDays = diffTime / (1000 * 60 * 60 * 24);
-              // Invoice date must be equal to or after the ticket date, up to 30 days later
-              datesMatch = diffDays >= 0 && diffDays <= 30;
-            } else {
-              datesMatch = t.fecha === invoiceDateStr;
+              if (!isNaN(tDate.getTime()) && !isNaN(invDate.getTime())) {
+                const diffTime = Math.abs(invDate.getTime() - tDate.getTime());
+                const diffDays = diffTime / (1000 * 60 * 60 * 24);
+                // Allow up to 90 days window
+                return diffDays <= 90;
+              }
             }
 
-            return stationCodeMatches && amountMatches && datesMatch;
+            return true;
           });
 
           if (matchingTicket) {
