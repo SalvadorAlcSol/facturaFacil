@@ -153,15 +153,23 @@ Si la foto no es legible o no contiene estos campos, pon found = false.`;
   });
 
   let isRobotRunning = false;
+  let robotStartTime = 0;
 
   // Auto-Invoicing endpoint that calls the real Puppeteer automation
   app.post("/api/auto-invoice", async (req: express.Request, res: express.Response) => {
+    // Auto-reset lock if stuck for more than 2 minutes
+    if (isRobotRunning && Date.now() - robotStartTime > 120000) {
+      console.log("[API] Restableciendo candado de robot por tiempo transcurrido (>2 min).");
+      isRobotRunning = false;
+    }
+
     if (isRobotRunning) {
       console.log("[API] Intento de facturación bloqueado: el robot ya está ejecutando otra tarea.");
       return res.status(409).json({ error: "El robot de facturación ya está ejecutando otra tarea. Por favor espera a que termine tu petición anterior." });
     }
 
     isRobotRunning = true;
+    robotStartTime = Date.now();
     try {
       const { ticket, datosFacturacion } = req.body;
       if (!ticket || !datosFacturacion) {
@@ -251,12 +259,19 @@ Si la foto no es legible o no contiene estos campos, pon found = false.`;
 
   // Synchronize past invoices by querying the portal using customer details
   app.post("/api/sync-invoices", async (req: express.Request, res: express.Response) => {
+    // Auto-reset lock if stuck for more than 2 minutes
+    if (isRobotRunning && Date.now() - robotStartTime > 120000) {
+      console.log("[API] Restableciendo candado de robot por tiempo transcurrido (>2 min).");
+      isRobotRunning = false;
+    }
+
     if (isRobotRunning) {
       console.log("[API] Intento de sincronización bloqueado: el robot ya está ejecutando otra tarea.");
       return res.status(409).json({ error: "El robot de facturación ya está ejecutando otra tarea. Por favor espera a que termine y reintenta." });
     }
 
     isRobotRunning = true;
+    robotStartTime = Date.now();
     try {
       const { datosFacturacion } = req.body;
       if (!datosFacturacion) {
