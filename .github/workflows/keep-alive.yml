@@ -1,0 +1,18 @@
+name: Keep Supabase Active
+
+on:
+  schedule:
+    # Runs every 3 days at 04:00 AM UTC
+    - cron: '0 4 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database
+        run: |
+          curl -s -X GET "https://umsupgxwnxkcrkyjrbdo.supabase.co/rest/v1/tickets?select=id&limit=1" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVtc3VwZ3h3bnhrY3JreWpyYmRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyODAyNTQsImV4cCI6MjA4Njg1NjI1NH0.rSFYoUZSG5KpKCF6pthvoxKHUTeHHO1nXCpSrpe4UJU" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVtc3VwZ3h3bnhrY3JreWpyYmRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyODAyNTQsImV4cCI6MjA4Njg1NjI1NH0.rSFYoUZSG5KpKCF6pthvoxKHUTeHHO1nXCpSrpe4UJU"
+          echo "Supabase Keep-Alive ping successful!"

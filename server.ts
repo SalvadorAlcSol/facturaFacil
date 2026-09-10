@@ -405,6 +405,18 @@ Si la foto no es legible o no contiene estos campos, pon found = false.`;
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server started on port ${PORT}`);
+
+    // Keep-Alive Ping for Supabase (runs every 24 hours to keep database active)
+    const pingSupabase = async () => {
+      try {
+        await supabase.from("tickets").select("id").limit(1);
+        console.log("[Keep-Alive] Ping automático a Supabase realizado con éxito.");
+      } catch (err) {
+        console.warn("[Keep-Alive] Error al hacer ping a Supabase:", err);
+      }
+    };
+    pingSupabase();
+    setInterval(pingSupabase, 24 * 60 * 60 * 1000);
   });
 }
 
